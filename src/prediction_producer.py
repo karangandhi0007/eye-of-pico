@@ -44,7 +44,7 @@ class ConsumeFrames(Process):
         :param name: Process name
         """
 
-        super().__init__(group=group, target=target, name=name)
+        super(ConsumeFrames, self).__init__(group=group, target=target, name=name)
 
         self.iam = "{}-{}".format(socket.gethostname(), self.name)
         self.frame_topic = frame_topic
@@ -66,7 +66,7 @@ class ConsumeFrames(Process):
             RoundRobinPartitionAssignor]
 
         frame_consumer = KafkaConsumer(group_id="consume", client_id=self.iam,
-                                       bootstrap_servers=["0.0.0.0:9092"],
+                                       bootstrap_servers=["kafka1-kafka-brokers:9092"],
                                        key_deserializer=lambda key: key.decode(),
                                        value_deserializer=lambda value: json.loads(value.decode()),
                                        partition_assignment_strategy=partition_assignment_strategy,
@@ -86,7 +86,7 @@ class ConsumeFrames(Process):
                                              [TopicPartition(topic=self.frame_topic, partition=i)
                                               for i in range(self.topic_partitions)])
         #  Produces prediction object
-        processed_frame_producer = KafkaProducer(bootstrap_servers=["localhost:9092"],
+        processed_frame_producer = KafkaProducer(bootstrap_servers=["kafka1-kafka-brokers:9092"],
                                                  key_serializer=lambda key: str(key).encode(),
                                                  value_serializer=lambda value: json.dumps(value).encode(),
                                                  partitioner=partitioner)
@@ -97,7 +97,7 @@ class ConsumeFrames(Process):
                 if self.verbose:
                     print("[ConsumeFrames {}] WAITING FOR NEXT FRAMES..".format(socket.gethostname()))
 
-                raw_frame_messages = frame_consumer.poll(timeout_ms=10, max_records=10)
+                raw_frame_messages = frame_consumer.poll(timeout_ms=10, max_records=2000)
 
                 for topic_partition, msgs in raw_frame_messages.items():
 
@@ -112,7 +112,7 @@ class ConsumeFrames(Process):
 
                         # Partition to be sent to
                         processed_frame_producer.send(self.processed_frame_topic,
-                                                      key="{}_{}".format(result["camera"], result["frame_num"]),
+                                                      key="{}-{}".format(result["camera"], result["frame_num"]),
                                                       value=result)
 
                     processed_frame_producer.flush()
@@ -184,7 +184,7 @@ class PredictFrames(Process):
         :param target: Process Target
         :param name: Process name
         """
-        super().__init__(group=group, target=target, name=name)
+        super(PredictFrames, self).__init__(group=group, target=target, name=name)
 
         self.iam = "{}-{}".format(socket.gethostname(), self.name)
         self.frame_topic = processed_frame_topic
@@ -205,7 +205,7 @@ class PredictFrames(Process):
             RoundRobinPartitionAssignor]
 
         frame_consumer = KafkaConsumer(group_id="consume", client_id=self.iam,
-                                       bootstrap_servers=["0.0.0.0:9092"],
+                                       bootstrap_servers=["kafka1-kafka-brokers:9092"],
                                        key_deserializer=lambda key: key.decode(),
                                        value_deserializer=lambda value: json.loads(value.decode()),
                                        partition_assignment_strategy=partition_assignment_strategy,
@@ -214,13 +214,13 @@ class PredictFrames(Process):
         frame_consumer.subscribe([self.frame_topic])
 
         #  Produces prediction object
-        prediction_producer = KafkaProducer(bootstrap_servers=["localhost:9092"],
+        prediction_producer = KafkaProducer(bootstrap_servers=["kafka2-kafka-brokers:9092"],
                                             key_serializer=lambda key: str(key).encode(),
                                             value_serializer=lambda value: json.dumps(value).encode())
 
         # Consume known face object to know what faces are the target
         query_faces_consumer = KafkaConsumer(self.query_faces_topic, group_id=self.iam, client_id=self.iam,
-                                             bootstrap_servers=["0.0.0.0:9092"],
+                                             bootstrap_servers=["kafka2-kafka-brokers:9092"],
                                              value_deserializer=lambda value: json.loads(value.decode()))
 
         print("[PredictFrames {}] WAITING FOR TRACKING INFO..".format(socket.gethostname()))
@@ -241,7 +241,7 @@ class PredictFrames(Process):
                 if self.verbose:
                     print("[PredictFrames {}] WAITING FOR NEXT FRAMES..".format(socket.gethostname()))
 
-                raw_frame_messages = frame_consumer.poll(timeout_ms=10, max_records=10)
+                raw_frame_messages = frame_consumer.poll(timeout_ms=10, max_records=2000)
 
                 for topic_partition, msgs in raw_frame_messages.items():
                     # Get the predicted Object, JSON with frame and meta info about the frame
@@ -266,7 +266,7 @@ class PredictFrames(Process):
                                                                   "\n"))
 
                         # camera specific topic
-                        prediction_topic = "{}_{}".format(PREDICTION_TOPIC_PREFIX, result["camera"])
+                        prediction_topic = "{}-{}".format(PREDICTION_TOPIC_PREFIX, result["camera"])
 
                         prediction_producer.send(prediction_topic, key=result["frame_num"], value=result)
 

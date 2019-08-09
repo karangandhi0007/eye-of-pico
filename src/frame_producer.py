@@ -76,11 +76,10 @@ class StreamVideo(Process):
                                               for i in range(self.topic_partitions)])
 
         # Producer object, set desired partitioner
-        frame_producer = KafkaProducer(bootstrap_servers=["my-cluster-kafka-brokers:9092"],
+        frame_producer = KafkaProducer(bootstrap_servers=["kafka1-kafka-brokers:9092"],
                                        key_serializer=lambda key: str(key).encode(),
                                        value_serializer=lambda value: json.dumps(value).encode(),
-                                       partitioner=partitioner, batch_size=100000, acks=0, retries=0,
-                                       buffer_memory=309600000, send_buffer_bytes=1000000)
+                                       partitioner=partitioner)
 
         print("[CAM {}] URL: {}, SET PARTITIONS FOR FRAME TOPIC: {}".format(self.camera_num,
                                                                             self.video_path,
@@ -88,6 +87,7 @@ class StreamVideo(Process):
                                                                                 self.frame_topic)))
         # Use either option
         video = cv2.VideoCapture(self.video_path) if self.use_cv2 else FileVideoStream(self.video_path).start()
+        #video.set(cv2.CAP_PROP_FPS,30)
 
         # Track frame number
         frame_num = 0
@@ -110,7 +110,6 @@ class StreamVideo(Process):
 
             # using smart, only unique frames, skips frames, faster fps
             else: 
-                video.more()
                 image = video.read()
                 # check if the file has read
                 if image is None:
@@ -134,7 +133,7 @@ class StreamVideo(Process):
                 print("\r[PRODUCER][Cam {}] FRAME: {} TO PARTITION: {}".format(message["camera"],
                                                                                frame_num, part))
             # Publish to specific partition
-            frame_producer.send(self.frame_topic, key="{}_{}".format(self.camera_num, frame_num), value=message)
+            frame_producer.send(self.frame_topic, key="{}-{}".format(self.camera_num, frame_num), value=message)
 
             # if frame_num % 1000 == 0:
             frame_producer.flush()

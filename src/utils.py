@@ -12,7 +12,7 @@ from .params import *
 
 
 # A.
-def consumer(cam_num, buffer_dict, data_dict, buffer_size=180):
+def consumer(cam_num, buffer_dict, data_dict, buffer_size=1800):
     """Generator to yield frames from the respective camera.
     :param buffer_size: Buffer Size
     :param data_dict: Data Stored here, buffer only stores keys
@@ -20,12 +20,12 @@ def consumer(cam_num, buffer_dict, data_dict, buffer_size=180):
     :param cam_num: camera number.
     """
 
-    topic = "{}_{}".format(PREDICTION_TOPIC_PREFIX, cam_num)
+    topic = "{}-{}".format(PREDICTION_TOPIC_PREFIX, cam_num)
     msg_stream = KafkaConsumer(topic, group_id="view",
-                               bootstrap_servers=["0.0.0.0:9092"],
+                               bootstrap_servers=["kafka2-kafka-brokers:9092"],
                                auto_offset_reset="earliest",
                                value_deserializer=lambda value: json.loads(value.decode()
-                                                                           ))
+                                   ))
     try:
         # start consuming msg stream
         while True:
@@ -33,7 +33,7 @@ def consumer(cam_num, buffer_dict, data_dict, buffer_size=180):
             original_frame, predicted_frame = bytes(0), bytes(0)
             start_buffer_consumption = False
             try:
-                raw_messages = msg_stream.poll(timeout_ms=12, max_records=12)
+                raw_messages = msg_stream.poll(timeout_ms=12, max_records=200)
 
                 for topic_partition, msgs in raw_messages.items():
                     # Get the predicted Object, JSON with frame and meta info about the frame
@@ -91,7 +91,7 @@ def consumer(cam_num, buffer_dict, data_dict, buffer_size=180):
 
 
 # B. 1.
-def consume_buffer(cam_num, buffer_dict, data_dict, event_threads, lock, buffer_size=180):
+def consume_buffer(cam_num, buffer_dict, data_dict, event_threads, lock, buffer_size=1800):
     """Generator to yield frames from the respective camera. Threaded Concept.
     :param buffer_size: Buffer Size
     :param lock: To ensure no deadlock while accessing buffer, as in population and consumption
@@ -149,7 +149,7 @@ def populate_buffer(msg_stream, cam_num, buffer_dict, data_dict, event_threads, 
         # start populating the buffer
         while True:
             try:
-                raw_messages = msg_stream.poll(timeout_ms=10000, max_records=900)
+                raw_messages = msg_stream.poll(timeout_ms=10000, max_records=9000)
                 print("[populate_buffer] WAITING FOR NEXT FRAME..")
                 for topic_partition, msgs in raw_messages.items():
                     # Get the predicted Object, JSON with frame and meta info about the frame

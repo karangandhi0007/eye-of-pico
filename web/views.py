@@ -16,10 +16,10 @@ from src.utils import populate_buffer, consume_buffer, consumer, np_to_json, cle
 from web import app
 
 # Clear prediction topic, new view, new app instance.
-clear_prediction_topics()
+#clear_prediction_topics()
 
 # Buffer properties
-BUFFER_SIZE = 600
+BUFFER_SIZE = 8000
 BUFFER_DICT = defaultdict(list)
 DATA_DICT = defaultdict(dict)
 BUFFER_THREADS = dict()
@@ -50,7 +50,7 @@ configure_uploads(app, photos)
 patch_request_class(app)  # set maximum file size, default is 16MB
 
 # INSTANTIATE BROADCAST TOPIC, USED TO SEND QUERY FACE MESSAGES
-broadcast_known_faces = KafkaProducer(bootstrap_servers=["my-cluster-kafka-brokers:9092"],
+broadcast_known_faces = KafkaProducer(bootstrap_servers=["kafka2-kafka-brokers:9092"],
                                       value_serializer=lambda value: json.dumps(value).encode())
 
 
@@ -219,9 +219,9 @@ def results():
 # Start Buffer thread
 if THREADED_BUFFER_CONCEPT:
     cam_nums = [i for i in range(1, TOTAL_CAMERAS + 1)]
-    prediction_topics = {cam_num: "{}_{}".format(PREDICTION_TOPIC_PREFIX, cam_num) for cam_num in cam_nums}
+    prediction_topics = {cam_num: "{}-{}".format(PREDICTION_TOPIC_PREFIX, cam_num) for cam_num in cam_nums}
     prediction_consumers = {cam_num: KafkaConsumer(topic, group_id="view",
-                                                   bootstrap_servers=["my-cluster-kafka-brokers:9092"],
+                                                   bootstrap_servers=["kafka2-kafka-brokers:9092"],
                                                    auto_offset_reset="earliest",
                                                    value_deserializer=lambda value: json.loads(value.decode()
                                                                                                )) for cam_num, topic in
