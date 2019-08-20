@@ -19,7 +19,7 @@ from web import app
 #clear_prediction_topics()
 
 # Buffer properties
-BUFFER_SIZE = 8000
+BUFFER_SIZE = 60000
 BUFFER_DICT = defaultdict(list)
 DATA_DICT = defaultdict(dict)
 BUFFER_THREADS = dict()
