@@ -268,7 +268,7 @@ def get_video_feed_url(camera_num=0, folder="tracking"):
     :returns A URL to the stream.
     """
     # serving from s3 bucket via cloudFront: url to the object
-    name = "{}/{}.mp4".format(folder, camera_num)
+    name = "{}/{}.mkv".format(folder, camera_num)
     var = os.path.abspath(name)
     return var
     #return "{}/{}.mp4".format(folder, camera_num)
